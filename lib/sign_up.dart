@@ -1,4 +1,6 @@
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'theme_provider.dart';
@@ -10,10 +12,10 @@ class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
   @override
-  _SignUpPageState createState() => _SignUpPageState();
+  SignUpPageState createState() => SignUpPageState();
 }
 
-class _SignUpPageState extends State<SignUpPage> {
+class SignUpPageState extends State<SignUpPage> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -26,12 +28,12 @@ class _SignUpPageState extends State<SignUpPage> {
         passwordController.text.isEmpty) {
       Fluttertoast.showToast(
           msg: "Please fill all fields", backgroundColor: Colors.red);
-      print('Validation failed: All fields not filled.');
+      developer.log('Validation failed: All fields not filled.');
       return; // Exit function if validation fails
     }
 
     try {
-      print('Signup process started for email: ${emailController.text.trim()}');
+      developer.log('Signup process started for email: ${emailController.text.trim()}');
 
       // 1. Authenticate user with Firebase Auth
       UserCredential userCredential =
@@ -46,10 +48,10 @@ class _SignUpPageState extends State<SignUpPage> {
             code: 'user-null-after-auth',
             message: 'Firebase Auth user is null after successful creation.');
       }
-      print('Firebase Auth user created with UID: ${userCredential.user!.uid}');
+      developer.log('Firebase Auth user created with UID: ${userCredential.user!.uid}');
 
       // 2. Save user data to Firestore
-      print('Attempting to save user data to Firestore for UID: ${userCredential.user!.uid}');
+      developer.log('Attempting to save user data to Firestore for UID: ${userCredential.user!.uid}');
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
@@ -60,7 +62,7 @@ class _SignUpPageState extends State<SignUpPage> {
       }, SetOptions(merge: true)); // Using merge:true is safer for updates, though .set() without merge
                                    // also works for initial creation.
 
-      print('User data successfully saved to Firestore for UID: ${userCredential.user!.uid}');
+      developer.log('User data successfully saved to Firestore for UID: ${userCredential.user!.uid}');
 
       Fluttertoast.showToast(
           msg: "Account created successfully ✅",
@@ -68,7 +70,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
       // 3. Navigate to the next screen if widget is mounted
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/devices');
+        context.go('/devices');
       }
     } on FirebaseAuthException catch (e) {
       String message;
@@ -81,12 +83,12 @@ class _SignUpPageState extends State<SignUpPage> {
       } else {
         message = 'Firebase Auth Error: ${e.message} (Code: ${e.code})';
       }
-      print('Firebase Auth Exception during signup: $message');
+      developer.log('Firebase Auth Exception during signup: $message');
       Fluttertoast.showToast(msg: message, backgroundColor: Colors.red);
     } catch (e, stacktrace) {
       // Catch any other general exceptions (e.g., Firestore write error, network issues)
-      print('General Error during signup/Firestore save: $e');
-      print('Stacktrace: $stacktrace'); // Print stacktrace for more context
+      developer.log('General Error during signup/Firestore save: $e');
+      developer.log('Stacktrace: $stacktrace'); // Print stacktrace for more context
       Fluttertoast.showToast(
           msg: "An unexpected error occurred: $e",
           backgroundColor: Colors.red);
@@ -98,8 +100,6 @@ class _SignUpPageState extends State<SignUpPage> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDarkMode;
 
-    Color gradientStart = isDark ? Colors.deepPurple : Colors.purpleAccent;
-    Color gradientEnd = isDark ? Colors.black87 : Colors.deepPurpleAccent;
     Color inputFillColor = isDark ? Colors.grey[800]! : Colors.white;
     Color inputTextColor = isDark ? Colors.white : Colors.black87;
     Color buttonColor = isDark ? Colors.tealAccent : Colors.deepPurple;
@@ -129,7 +129,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   style: TextStyle(color: inputTextColor),
                   decoration: InputDecoration(
                     hintText: "Full Name",
-                    hintStyle: TextStyle(color: inputTextColor.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: inputTextColor.withAlpha(153)),
                     prefixIcon: Icon(Icons.person, color: inputTextColor),
                     filled: true,
                     fillColor: inputFillColor,
@@ -147,7 +147,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   style: TextStyle(color: inputTextColor),
                   decoration: InputDecoration(
                     hintText: "Email",
-                    hintStyle: TextStyle(color: inputTextColor.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: inputTextColor.withAlpha(153)),
                     prefixIcon: Icon(Icons.email, color: inputTextColor),
                     filled: true,
                     fillColor: inputFillColor,
@@ -167,7 +167,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   onSubmitted: (_) => _signUp(),
                   decoration: InputDecoration(
                     hintText: "Password",
-                    hintStyle: TextStyle(color: inputTextColor.withOpacity(0.6)),
+                    hintStyle: TextStyle(color: inputTextColor.withAlpha(153)),
                     prefixIcon: Icon(Icons.lock, color: inputTextColor),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -220,7 +220,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         style: GoogleFonts.poppins(
                             color: isDark ? Colors.white70 : Colors.black87)),
                     GestureDetector(
-                      onTap: () => Navigator.pushNamed(context, '/signin'),
+                      onTap: () => context.go('/signin'),
                       child: Text(
                         "Sign In",
                         style: GoogleFonts.poppins(

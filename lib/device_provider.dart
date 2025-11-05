@@ -38,20 +38,27 @@ class DeviceProvider extends ChangeNotifier {
     });
   }
 
+  Map<String, dynamic>? getDeviceById(String deviceId) {
+    try {
+      return _devices.firstWhere((device) => device['id'] == deviceId);
+    } catch (e) {
+      return null; // Return null if no device is found
+    }
+  }
+
+  // THIS IS THE CORRECTED FUNCTION
   void addDevice(String name) {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Clean the name string before adding to Firestore (as discussed for potential garbled text)
-      String cleanedName = name.replaceAll(RegExp(r'\s+'), ' ').trim(); 
-
       FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('devices')
           .add({
-        'name': cleanedName, // Use the cleaned name
-        'status': 'Offline', // <--- CHANGED TO OFFLINE BY DEFAULT
-        'lastActivity': DateTime.now().toIso8601String(),
+        'name': name.trim(),
+        'status': 'Offline', // Default status
+        'lastActivity': DateTime.now().toIso8601String(), // Default timestamp
+        // Add any other default fields your device needs
       });
     }
   }

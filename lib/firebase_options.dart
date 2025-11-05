@@ -51,19 +51,20 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyACahLmEMLYMdue9wx9l4EY9YXza6K4LH0',
-    appId: '1:477653563777:android:2de810788f52896fc6d080',
+    appId: '1:477653563777:web:01235fa03a1d491ac6d080',
     messagingSenderId: '477653563777',
     projectId: 'sane-machine-3e910',
     authDomain: 'sane-machine-3e910.firebaseapp.com',
     storageBucket: 'sane-machine-3e910.firebasestorage.app',
-    measurementId: 'G-JN1MRD21Q4',
+    measurementId: 'G-0XC37MC56B',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCzr2nN8ljx9_-UqujTW1zZ2Ls5mOd_mXw',
-    appId: '1:477653563777:android:2de810788f52896fc6d080',
+    appId: '1:477653563777:android:6bd7a70be410050fc6d080',
     messagingSenderId: '477653563777',
     projectId: 'sane-machine-3e910',
     storageBucket: 'sane-machine-3e910.firebasestorage.app',
   );
+
 }

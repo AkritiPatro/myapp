@@ -16,6 +16,31 @@
       "api_key": [
         {
           "current_key": "AIzaSyCzr2nN8ljx9_-UqujTW1zZ2Ls5mOd_mXw"
+        },
+        {
+          "current_key": "AIzaSyDBMIg_UTfk2N3DBLbz4QZ9YNdTXgm47Ao"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:477653563777:android:6bd7a70be410050fc6d080",
+        "android_client_info": {
+          "package_name": "com.example.sane_machine"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCzr2nN8ljx9_-UqujTW1zZ2Ls5mOd_mXw"
+        },
+        {
+          "current_key": "AIzaSyDBMIg_UTfk2N3DBLbz4QZ9YNdTXgm47Ao"
         }
       ],
       "services": {

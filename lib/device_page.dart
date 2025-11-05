@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'device_provider.dart';
 import 'theme_provider.dart';
-import 'device_detail_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,10 +12,10 @@ class DevicePage extends StatefulWidget {
   const DevicePage({super.key});
 
   @override
-  _DevicePageState createState() => _DevicePageState();
+  DevicePageState createState() => DevicePageState();
 }
 
-class _DevicePageState extends State<DevicePage> {
+class DevicePageState extends State<DevicePage> {
   String? _userName;
 
   @override
@@ -27,13 +27,10 @@ class _DevicePageState extends State<DevicePage> {
   Future<void> _fetchUserName() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       if (mounted) {
         setState(() {
-          // Safely access the 'name' field
           _userName = userDoc.exists ? userDoc.get('name') : null;
         });
       }
@@ -60,31 +57,35 @@ class _DevicePageState extends State<DevicePage> {
         centerTitle: true,
         elevation: 1,
         actions: [
-          // Chatbot button
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Chatbot',
             onPressed: () {
-              Navigator.pushNamed(context, '/chatbot');
+              context.go('/chatbot');
             },
-            tooltip: 'Chat with AI Assistant',
           ),
-          // Existing theme toggle
           IconButton(
-            icon: Icon(isDark ? Icons.wb_sunny : Icons.nightlight_round),
+            icon: Icon(
+              isDark ? Icons.wb_sunny : Icons.nightlight_round,
+            ),
+            tooltip: 'Toggle Theme',
             onPressed: () {
-              themeProvider.toggleTheme();
+              Provider.of<ThemeProvider>(
+                context,
+                listen: false,
+              ).toggleTheme();
             },
           ),
-          // Existing logout button
           IconButton(
             icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
             onPressed: () {
               FirebaseAuth.instance.signOut();
               Fluttertoast.showToast(
                 msg: "Logged out",
                 backgroundColor: Colors.red,
               );
-              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+              context.go('/');
             },
           ),
         ],
@@ -94,186 +95,188 @@ class _DevicePageState extends State<DevicePage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark ? [Colors.black, darkGrey] : [lightGrey, Colors.white],
+            colors:
+                isDark ? [Colors.black, darkGrey] : [lightGrey, Colors.white],
           ),
         ),
-        child: deviceProvider.devices.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.devices_other,
-                      size: 80,
-                      color: iconColor,
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      "No devices yet.",
-                      style: GoogleFonts.poppins(
-                        fontSize: 22,
-                        color: isDark ? Colors.white70 : darkGrey,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      "Add a new device to get started!",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: isDark ? Colors.white54 : darkGrey,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: deviceProvider.devices.length,
-                itemBuilder: (context, index) {
-                  final device = deviceProvider.devices[index];
-                  final String deviceName = device['name']?.toString() ?? 'Unnamed Device';
-                  final String deviceStatus = device['status']?.toString() ?? 'Unknown';
-                  final Color subTextColor = isDark ? Colors.white70 : Colors.grey.shade600;
-
-                  return Card(
-                    elevation: 8,
-                    shadowColor: isDark
-                        ? Colors.purple.withOpacity(0.5)
-                        : Colors.deepPurple.withOpacity(0.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        gradient: LinearGradient(
-                          colors: isDark
-                              ? [darkGrey, darkGrey]
-                              : [Colors.white, lightGrey],
+        child:
+            deviceProvider.devices.isEmpty
+                ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.devices_other, size: 80, color: iconColor),
+                      const SizedBox(height: 20),
+                      Text(
+                        "No devices yet.",
+                        style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          color: isDark ? Colors.white70 : darkGrey,
                         ),
                       ),
-                      // **Manual Layout using InkWell/Row/Column for maximum control**
-                      child: InkWell( // Provides touch ripple effect
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => DeviceDetailPage(
-                                deviceId: device['id'],
-                              ),
-                            ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // 1. LEADING ICON
-                              CircleAvatar(
-                                radius: 28,
-                                backgroundColor: isDark ? Colors.purple : Colors.deepPurple,
-                                child: const Icon(Icons.power, color: Colors.white),
-                              ),
+                      const SizedBox(height: 10),
+                      Text(
+                        "Add a new device to get started!",
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: isDark ? Colors.white54 : darkGrey,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: deviceProvider.devices.length,
+                  itemBuilder: (context, index) {
+                    final device = deviceProvider.devices[index];
+                    final String deviceName =
+                        device['name']?.toString() ?? 'Unnamed Device';
+                    final String deviceStatus =
+                        device['status']?.toString() ?? 'Unknown';
+                    final Color subTextColor =
+                        isDark ? Colors.white70 : Colors.grey.shade600;
 
-                              const SizedBox(width: 16),
-                              
-                              // 2. TEXT CONTENT (Guaranteed maximum space via Expanded)
-                              Expanded( // Takes all available space not used by fixed elements
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // Device Name - maxLines: 1 forces truncation if too long
-                                    Text(
-                                      deviceName,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: textColor,
-                                      ),
-                                      maxLines: 1, 
-                                      overflow: TextOverflow.ellipsis,
-                                      softWrap: false,
-                                    ),
-                                    
-                                    // Status & Last Activity - maxLines: 1 keeps card height minimal
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "Status: $deviceStatus \u2022 Last active ${timeAgo(device['lastActivity'])}", 
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        color: subTextColor,
-                                      ),
-                                      maxLines: 1, 
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
+                    return Card(
+                      elevation: 8,
+                      shadowColor:
+                          isDark
+                              ? Colors.purple.withAlpha(128)
+                              : Colors.deepPurple.withAlpha(128),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          gradient: LinearGradient(
+                            colors:
+                                isDark
+                                    ? [darkGrey, darkGrey]
+                                    : [Colors.white, lightGrey],
+                          ),
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            context.go('/devices/${device['id']}');
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                CircleAvatar(
+                                  radius: 28,
+                                  backgroundColor:
+                                      isDark
+                                          ? Colors.purple
+                                          : Colors.deepPurple,
+                                  child: const Icon(
+                                    Icons.power,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              ),
-                              
-                              // 3. ACTION BUTTONS (Fixed Width Constraint)
-                              // This prevents the buttons from flowing off-screen or squeezing the text.
-                              Container(
-                                width: 140, // Fixed width for the actions section
-                                alignment: Alignment.centerRight,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min, // Essential to keep the Row tight
-                                  children: [
-                                    // Switch
-                                    Switch(
-                                      value: deviceStatus == 'Online',
-                                      onChanged: (value) {
-                                        deviceProvider.toggleDeviceStatus(
-                                          device['id'],
-                                          deviceStatus,
-                                        );
-                                        Fluttertoast.showToast(
-                                          msg: "$deviceName turned ${value ? "On" : "Off"}",
-                                        );
-                                      },
-                                      activeThumbColor: Colors.purple,
-                                    ),
-                                    
-                                    // Edit Icon (Controlled width)
-                                    SizedBox(
-                                      width: 32, 
-                                      child: IconButton(
-                                        icon: Icon(Icons.edit, color: textColor, size: 20),
-                                        onPressed: () => _showRenameDialog(
-                                          context, deviceProvider, device['id'], deviceName,
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        deviceName,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: textColor,
                                         ),
-                                        padding: EdgeInsets.zero,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
                                       ),
-                                    ),
-                                    
-                                    // Delete Icon (Controlled width)
-                                    SizedBox(
-                                      width: 32, 
-                                      child: IconButton(
-                                        icon: const Icon(
-                                          Icons.delete,
-                                          color: Colors.redAccent,
-                                          size: 20,
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "Status: $deviceStatus • Last active ${timeAgo(device['lastActivity'] as String?)}",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: subTextColor,
                                         ),
-                                        onPressed: () => _showDeleteDialog(
-                                          context, deviceProvider, device['id'], deviceName,
-                                        ),
-                                        padding: EdgeInsets.zero,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                                Container(
+                                  width: 140,
+                                  alignment: Alignment.centerRight,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Switch(
+                                        value: deviceStatus == 'Online',
+                                        onChanged: (value) {
+                                          deviceProvider.toggleDeviceStatus(
+                                            device['id'],
+                                            deviceStatus,
+                                          );
+                                          Fluttertoast.showToast(
+                                            msg:
+                                                "$deviceName turned ${value ? "On" : "Off"}",
+                                          );
+                                        },
+                                        activeThumbColor: Colors.purple,
+                                      ),
+                                      SizedBox(
+                                        width: 32,
+                                        child: IconButton(
+                                          icon: Icon(
+                                            Icons.edit,
+                                            color: textColor,
+                                            size: 20,
+                                          ),
+                                          onPressed:
+                                              () => _showRenameDialog(
+                                                context,
+                                                deviceProvider,
+                                                device['id'],
+                                                deviceName,
+                                              ),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 32,
+                                        child: IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.redAccent,
+                                            size: 20,
+                                          ),
+                                          onPressed:
+                                              () => _showDeleteDialog(
+                                                context,
+                                                deviceProvider,
+                                                device['id'],
+                                                deviceName,
+                                              ),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -291,36 +294,35 @@ class _DevicePageState extends State<DevicePage> {
     );
   }
 
-  // --- Dialog methods (unchanged) ---
-
   void _showAddDeviceDialog(BuildContext context, DeviceProvider provider) {
     final TextEditingController controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text("Add Device", style: GoogleFonts.poppins()),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: "Device Name"),
-          style: GoogleFonts.poppins(),
-        ),
-        actions: [
-          TextButton(
-            child: Text("Cancel", style: GoogleFonts.poppins()),
-            onPressed: () => Navigator.pop(context),
+      builder:
+          (_) => AlertDialog(
+            title: Text("Add Device", style: GoogleFonts.poppins()),
+            content: TextField(
+              controller: controller,
+              decoration: const InputDecoration(hintText: "Device Name"),
+              style: GoogleFonts.poppins(),
+            ),
+            actions: [
+              TextButton(
+                child: Text("Cancel", style: GoogleFonts.poppins()),
+                onPressed: () => Navigator.pop(context),
+              ),
+              TextButton(
+                child: Text("Add", style: GoogleFonts.poppins()),
+                onPressed: () {
+                  if (controller.text.isNotEmpty) {
+                    provider.addDevice(controller.text);
+                    Navigator.pop(context);
+                    Fluttertoast.showToast(msg: "New device added!");
+                  }
+                },
+              ),
+            ],
           ),
-          TextButton(
-            child: Text("Add", style: GoogleFonts.poppins()),
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                provider.addDevice(controller.text);
-                Navigator.pop(context);
-                Fluttertoast.showToast(msg: "New device added!");
-              }
-            },
-          ),
-        ],
-      ),
     );
   }
 
@@ -335,30 +337,31 @@ class _DevicePageState extends State<DevicePage> {
     );
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text("Rename Device", style: GoogleFonts.poppins()),
-        content: TextField(
-          controller: controller,
-          style: GoogleFonts.poppins(),
-        ),
-        actions: [
-          TextButton(
-            child: Text("Cancel", style: GoogleFonts.poppins()),
-            onPressed: () => Navigator.pop(context),
+      builder:
+          (_) => AlertDialog(
+            title: Text("Rename Device", style: GoogleFonts.poppins()),
+            content: TextField(
+              controller: controller,
+              style: GoogleFonts.poppins(),
+            ),
+            actions: [
+              TextButton(
+                child: Text("Cancel", style: GoogleFonts.poppins()),
+                onPressed: () => Navigator.pop(context),
+              ),
+              TextButton(
+                child: Text("Save", style: GoogleFonts.poppins()),
+                onPressed: () {
+                  if (controller.text.isNotEmpty) {
+                    provider.renameDevice(deviceId, controller.text);
+                    Navigator.pop(context);
+                  } else {
+                    Fluttertoast.showToast(msg: "Device name cannot be empty.");
+                  }
+                },
+              ),
+            ],
           ),
-          TextButton(
-            child: Text("Save", style: GoogleFonts.poppins()),
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                provider.renameDevice(deviceId, controller.text);
-                Navigator.pop(context);
-              } else {
-                Fluttertoast.showToast(msg: "Device name cannot be empty.");
-              }
-            },
-          ),
-        ],
-      ),
     );
   }
 
@@ -370,35 +373,40 @@ class _DevicePageState extends State<DevicePage> {
   ) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text("Delete Device", style: GoogleFonts.poppins()),
-        content: Text(
-          "Are you sure you want to delete $deviceName?",
-          style: GoogleFonts.poppins(),
-        ),
-        actions: [
-          TextButton(
-            child: Text("Cancel", style: GoogleFonts.poppins()),
-            onPressed: () => Navigator.pop(context),
-          ),
-          TextButton(
-            child: Text(
-              "Delete",
-              style: GoogleFonts.poppins(color: Colors.red),
+      builder:
+          (_) => AlertDialog(
+            title: Text("Delete Device", style: GoogleFonts.poppins()),
+            content: Text(
+              "Are you sure you want to delete $deviceName?",
+              style: GoogleFonts.poppins(),
             ),
-            onPressed: () {
-              provider.removeDevice(deviceId);
-              Navigator.pop(context);
-            },
+            actions: [
+              TextButton(
+                child: Text("Cancel", style: GoogleFonts.poppins()),
+                onPressed: () => Navigator.pop(context),
+              ),
+              TextButton(
+                child: Text(
+                  "Delete",
+                  style: GoogleFonts.poppins(color: Colors.red),
+                ),
+                onPressed: () {
+                  provider.removeDevice(deviceId);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
 
-String timeAgo(String dateTimeStr) {
-  final dateTime = DateTime.parse(dateTimeStr);
+String timeAgo(String? dateTimeStr) {
+  if (dateTimeStr == null || dateTimeStr.isEmpty) {
+    return "a while ago";
+  }
+  final dateTime = DateTime.tryParse(dateTimeStr);
+  if (dateTime == null) return "a while ago"; // Handle potential parse error
   final Duration diff = DateTime.now().difference(dateTime);
 
   if (diff.inSeconds < 60) return "just now";
