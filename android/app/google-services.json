@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "477653563777",
+    "project_id": "sane-machine-3e910",
+    "storage_bucket": "sane-machine-3e910.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:477653563777:android:2de810788f52896fc6d080",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCzr2nN8ljx9_-UqujTW1zZ2Ls5mOd_mXw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
