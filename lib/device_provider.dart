@@ -1,104 +1,114 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:async';
+import 'dart:math';
+import 'device_model.dart';
 
-class DeviceProvider extends ChangeNotifier {
-  List<Map<String, dynamic>> _devices = [];
-  List<Map<String, dynamic>> get devices => _devices;
-  StreamSubscription? _devicesSubscription;
+class DeviceProvider with ChangeNotifier {
+  final List<Device> _devices = [];
 
-  DeviceProvider() {
-    FirebaseAuth.instance.authStateChanges().listen((user) {
-      if (user != null) {
-        loadDevices(user.uid);
-      } else {
-        _devices = [];
-        _devicesSubscription?.cancel();
-        notifyListeners();
-      }
-    });
-  }
+  List<Device> get devices => _devices;
 
-  void loadDevices(String userId) {
-    _devicesSubscription?.cancel();
-    _devicesSubscription = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('devices')
-        .snapshots()
-        .listen((snapshot) {
-      _devices = snapshot.docs.map((doc) {
-        return {
-          'id': doc.id,
-          ...doc.data(),
-        };
-      }).toList();
-      notifyListeners();
-    });
-  }
+  // --- Mock Data Generation ---
+  Device _createNewWashingMachine(String name) {
+    final random = Random();
+    final now = DateTime.now();
 
-  Map<String, dynamic>? getDeviceById(String deviceId) {
-    try {
-      return _devices.firstWhere((device) => device['id'] == deviceId);
-    } catch (e) {
-      return null; // Return null if no device is found
+    // Generate random historical wash cycles
+    final washCycleHistory = List<WashCycle>.generate(
+      random.nextInt(15) + 5, // 5 to 20 cycles
+      (index) {
+        return WashCycle(
+          date: now.subtract(Duration(days: random.nextInt(30), hours: random.nextInt(24))),
+          durationMinutes: random.nextInt(30) + 30, // 30 to 60 minutes
+        );
+      },
+    )..sort((a, b) => b.date.compareTo(a.date));
+
+    // Determine a random status
+    final statusRoll = random.nextDouble();
+    DeviceStatus status;
+    if (statusRoll < 0.6) { // 60% chance of normal
+      status = DeviceStatus.normalOperation;
+    } else if (statusRoll < 0.85) { // 25% chance of early warning
+      status = DeviceStatus.earlyWarning;
+    } else { // 15% chance of maintenance required
+      status = DeviceStatus.maintenanceRequired;
     }
+
+    return Device(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name,
+      type: 'Washing Machine',
+      isOnline: random.nextBool(),
+      status: status,
+      lastActivity: now.subtract(Duration(minutes: random.nextInt(120))),
+      washCycleHistory: washCycleHistory,
+      waterLevel: random.nextDouble() * 100, // Percentage
+      temperature: random.nextDouble() * 60 + 20, // 20-80 C
+      vibrationLevel: random.nextDouble() * 5, // 0-5 mm/s
+      scheduledMaintenanceDate: null,
+    );
   }
 
-  // THIS IS THE CORRECTED FUNCTION
+  // --- Device Management ---
+
   void addDevice(String name) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('devices')
-          .add({
-        'name': name.trim(),
-        'status': 'Offline', // Default status
-        'lastActivity': DateTime.now().toIso8601String(), // Default timestamp
-        // Add any other default fields your device needs
-      });
-    }
+    final newDevice = _createNewWashingMachine(name);
+    _devices.add(newDevice);
+    notifyListeners();
   }
 
   void removeDevice(String deviceId) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('devices')
-          .doc(deviceId)
-          .delete();
-    }
+    _devices.removeWhere((device) => device.id == deviceId);
+    notifyListeners();
   }
 
   void renameDevice(String deviceId, String newName) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('devices')
-          .doc(deviceId)
-          .update({'name': newName});
+    try {
+      final deviceIndex = _devices.indexWhere((device) => device.id == deviceId);
+      if (deviceIndex != -1) {
+        final oldDevice = _devices[deviceIndex];
+        _devices[deviceIndex] = oldDevice.copyWith(name: newName);
+        notifyListeners();
+      }
+    } catch (e) {
+      // Handle error if necessary
     }
   }
 
-  void toggleDeviceStatus(String deviceId, String currentStatus) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('devices')
-          .doc(deviceId)
-          .update({
-        'status': currentStatus == 'Online' ? 'Offline' : 'Online',
-        'lastActivity': DateTime.now().toIso8601String(),
-      });
+  void toggleDeviceStatus(String deviceId) {
+     try {
+      final deviceIndex = _devices.indexWhere((d) => d.id == deviceId);
+      if (deviceIndex != -1) {
+         final oldDevice = _devices[deviceIndex];
+        _devices[deviceIndex] = oldDevice.copyWith(isOnline: !oldDevice.isOnline);
+        notifyListeners();
+      }
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Device? getDeviceById(String deviceId) {
+    try {
+      return _devices.firstWhere((device) => device.id == deviceId);
+    } catch (e) {
+      return null; // Return null if not found
+    }
+  }
+
+  void scheduleMaintenance(String deviceId, DateTime maintenanceDate) {
+    try {
+      final deviceIndex = _devices.indexWhere((device) => device.id == deviceId);
+      if (deviceIndex != -1) {
+        final oldDevice = _devices[deviceIndex];
+        _devices[deviceIndex] = oldDevice.copyWith(
+          status: DeviceStatus.scheduled,
+          scheduledMaintenanceDate: maintenanceDate,
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      // Handle error
     }
   }
 }

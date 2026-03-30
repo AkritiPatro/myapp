@@ -5,7 +5,7 @@ class GeminiChatService {
 
   GeminiChatService()
       : _chat = FirebaseAI.googleAI()
-            .generativeModel(model: 'gemini-2.5-pro')
+            .generativeModel(model: 'gemini-2.5-flash')
             .startChat();
 
   Future<String> sendMessage(String message) async {

@@ -1,42 +1,34 @@
-# To learn more about how to use Nix to configure your environment
-# see: https://firebase.google.com/docs/studio/customize-workspace
 { pkgs, ... }: {
-  # Which nixpkgs channel to use.
-  channel = "stable-24.05"; # or "unstable"
-  # Use https://search.nixos.org/packages to find packages
+  # 1. Install necessary system packages
   packages = [
-    pkgs.jdk21
-    pkgs.unzip
-    pkgs.zip
-    pkgs.google-chrome
+    pkgs.flutter
+    pkgs.dart
+    pkgs.jdk17      # Essential for APK building
+    pkgs.unzip      # Required by Flutter to manage tools
   ];
-  # Sets environment variables in the workspace
+
   env = {};
+
   idx = {
-    # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
-      "Dart-Code.flutter"
-      "Dart-Code.dart-code"
+      "dart-code.dart-code"
+      "dart-code.flutter"
     ];
+
+    # 2. Workspace lifecycle hooks (moved to the correct block)
     workspace = {
-      # Runs when a workspace is first created with this `dev.nix` file
-      onCreate = { };
-      # To run something each time the workspace is (re)started, use the `onStart` hook
-      onStart = {
-        # Accept Android licenses
-        accept-licenses = "yes | flutter doctor --android-licenses";
+      onCreate = {
+        # Automatically accept licenses and fetch dependencies
+        init-flutter = "flutter pub get && yes | flutter doctor --android-licenses";
       };
     };
-    # Enable previews and customize configuration
+
+    # 3. This block tells IDX to provision the Android SDK for you
     previews = {
       enable = true;
       previews = {
-        web = {
-          command = ["flutter" "run" "--machine" "-d" "web-server" "--web-hostname" "0.0.0.0" "--web-port" "$PORT"];
-          manager = "flutter";
-        };
         android = {
-          command = ["flutter" "run" "--machine" "-d" "android" "-d" "localhost:5555"];
+          # This triggers the automatic SDK setup
           manager = "flutter";
         };
       };

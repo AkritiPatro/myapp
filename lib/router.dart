@@ -46,7 +46,7 @@ final GoRouter router = GoRouter(
           path: ':id',
           builder: (context, state) {
             final deviceId = state.pathParameters['id']!;
-            return DeviceDetailPage(deviceId: deviceId);
+            return DeviceDetailScreen(deviceId: deviceId);
           },
         ),
       ],
