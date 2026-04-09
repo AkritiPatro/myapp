@@ -22,6 +22,31 @@ class SignInPageState extends State<SignInPage> {
   bool _obscurePassword = true;
   bool rememberMe = false;
 
+  void _resetPassword() async {
+    final email = emailController.text.trim();
+    if (email.isEmpty) {
+      Fluttertoast.showToast(
+          msg: "Please enter your email above first.", backgroundColor: Colors.orange);
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      developer.log("Password reset email sent to: $email");
+      Fluttertoast.showToast(
+          msg: "Password reset link sent to your email 📧",
+          backgroundColor: Colors.blue);
+    } on FirebaseAuthException catch (e) {
+      developer.log("Error sending reset email: ${e.message}");
+      Fluttertoast.showToast(
+          msg: "Error: ${e.message}", backgroundColor: Colors.red);
+    } catch (e) {
+      developer.log("General error during password reset: $e");
+      Fluttertoast.showToast(
+          msg: "Failed to send reset email.", backgroundColor: Colors.red);
+    }
+  }
+
   void _signIn() async {
     developer.log("Login attempt started.");
 
@@ -109,7 +134,7 @@ class SignInPageState extends State<SignInPage> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -120,7 +145,7 @@ class SignInPageState extends State<SignInPage> {
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.tealAccent : Colors.deepPurple),
                 ),
-                SizedBox(height: 50),
+                const SizedBox(height: 50),
 
                 // Email
                 TextField(
@@ -138,7 +163,7 @@ class SignInPageState extends State<SignInPage> {
                     ),
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
 
                 // Password
                 TextField(
@@ -169,7 +194,24 @@ class SignInPageState extends State<SignInPage> {
                     ),
                   ),
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
+
+                // Forgot Password Link
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _resetPassword,
+                    child: Text(
+                      "Forgot Password?",
+                      style: GoogleFonts.poppins(
+                        color: isDark ? Colors.tealAccent : Colors.deepPurple,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 5),
 
                 // Remember Me
                 Consumer<ThemeProvider>(
@@ -194,14 +236,14 @@ class SignInPageState extends State<SignInPage> {
                     );
                   },
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 // Login Button
                 ElevatedButton(
                   onPressed: _signIn,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isDark ? Colors.tealAccent : Colors.deepPurple,
-                    minimumSize: Size(double.infinity, 50),
+                    minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -210,7 +252,7 @@ class SignInPageState extends State<SignInPage> {
                       style: GoogleFonts.poppins(
                           fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 // Sign up link
                 Row(

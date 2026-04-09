@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'device_provider.dart';
 import 'dart:developer' as developer;
 
 class SplashScreen extends StatefulWidget {
@@ -29,6 +31,12 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     try {
+      // Initialize Data Catalog & Maintenance Logic
+      final deviceProvider = Provider.of<DeviceProvider>(context, listen: false);
+      await deviceProvider.initializeData();
+      
+      if (!mounted) return;
+
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         developer.log('User is authenticated, navigating to /devices', name: 'SplashScreen');

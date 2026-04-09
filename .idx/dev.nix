@@ -5,6 +5,7 @@
     pkgs.dart
     pkgs.jdk17      # Essential for APK building
     pkgs.unzip      # Required by Flutter to manage tools
+    pkgs.nodePackages.firebase-tools
   ];
 
   env = {};

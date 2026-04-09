@@ -1,16 +1,20 @@
-# myapp
+# Sane Machine 🛠️
+**AI-Powered Predictive Maintenance & Diagnostics for Appliances**
 
-A new Flutter project.
+Sane Machine is a technical tool designed to monitor machine health using real-time sensor data. It predicts mechanical failures by analyzing vibration and power consumption, backed by Google’s Gemini AI.
 
-## Getting Started
+## ✨ Key Features
+*   **Predictive Diagnostics**: Real-time evaluation of machine health (Healthy, Warning, Failure) based on dynamic RPM scaling.
+*   **Gemini AI Chat**: Context-aware AI assistant that helps interpret diagnostic results in plain English.
+*   **Admin Dashboard**: Manage device catalogs and user access with Role-Based Access Control (RBAC).
+*   **Data History**: Visual history charts to track sensor trends and anomalies over time.
 
-This project is a starting point for a Flutter application.
+## 🧠 Technical Overview
+The system utilizes a custom diagnostic engine that scales thresholds based on machine specifications (e.g., Max RPM). For a deep dive into the math and logic, see:
+*   [Technical Details](TECHNICAL_DETAILS.md)
+*   [System Explainer](SYSTEM_EXPLAINER.md)
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🚀 Getting Started
+1. **Initialize Firebase**: `flutterfire configure`
+2. **Configure API Key**: Access Gemini by adding your key to an `.env` file (`GEMINI_API_KEY`).
+3. **Run**: `flutter run`

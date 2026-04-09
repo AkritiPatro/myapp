@@ -7,41 +7,31 @@ import 'device_page.dart';
 import 'chat_screen.dart';
 import 'landing_page.dart';
 import 'device_detail_page.dart';
+import 'admin_users_page.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/',
   routes: <RouteBase>[
     GoRoute(
       path: '/',
-      builder: (BuildContext context, GoRouterState state) {
-        return const SplashScreen();
-      },
+      builder: (BuildContext context, GoRouterState state) => const SplashScreen(),
     ),
     GoRoute(
       path: '/landing',
-      builder: (BuildContext context, GoRouterState state) {
-        return const LandingPage();
-      },
+      builder: (BuildContext context, GoRouterState state) => const LandingPage(),
     ),
     GoRoute(
       path: '/signin',
-      builder: (BuildContext context, GoRouterState state) {
-        return const SignInPage();
-      },
+      builder: (BuildContext context, GoRouterState state) => const SignInPage(),
     ),
     GoRoute(
       path: '/signup',
-      builder: (BuildContext context, GoRouterState state) {
-        return const SignUpPage();
-      },
+      builder: (BuildContext context, GoRouterState state) => const SignUpPage(),
     ),
     GoRoute(
       path: '/devices',
-      builder: (BuildContext context, GoRouterState state) {
-        return const DevicePage();
-      },
+      builder: (BuildContext context, GoRouterState state) => const DevicePage(),
       routes: [
-        // Add the dynamic route for device details
         GoRoute(
           path: ':id',
           builder: (context, state) {
@@ -54,8 +44,13 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/chatbot',
       builder: (BuildContext context, GoRouterState state) {
-        return const ChatScreen();
+        final deviceId = state.uri.queryParameters['deviceId'];
+        return ChatScreen(initialDeviceId: deviceId);
       },
+    ),
+    GoRoute(
+      path: '/admin/users',
+      builder: (BuildContext context, GoRouterState state) => const AdminUsersPage(),
     ),
   ],
 );

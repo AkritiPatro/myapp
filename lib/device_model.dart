@@ -29,10 +29,14 @@ extension DeviceStatusExtension on DeviceStatus {
 class WashCycle {
   final DateTime date;
   final int durationMinutes;
+  final DeviceStatus status;
+  final String? diagnosticMessage;
 
   const WashCycle({
     required this.date,
     required this.durationMinutes,
+    this.status = DeviceStatus.normalOperation,
+    this.diagnosticMessage,
   });
 }
 
@@ -49,6 +53,14 @@ class Device {
   final double temperature;
   final double vibrationLevel;
   final DateTime? scheduledMaintenanceDate;
+  
+  // New Specification Fields
+  final String brand;
+  final String modelName;
+  final int maxSpinSpeed;
+  final double capacity;
+  final bool hasHeater;
+  final String? diagnosticMessage;
 
   const Device({
     required this.id,
@@ -62,6 +74,12 @@ class Device {
     required this.temperature,
     required this.vibrationLevel,
     this.scheduledMaintenanceDate,
+    this.brand = 'Generic',
+    this.modelName = 'Model X',
+    this.maxSpinSpeed = 800,
+    this.capacity = 7.0,
+    this.hasHeater = false,
+    this.diagnosticMessage,
   });
 
   Device copyWith({
@@ -76,6 +94,12 @@ class Device {
     double? temperature,
     double? vibrationLevel,
     DateTime? scheduledMaintenanceDate,
+    String? brand,
+    String? modelName,
+    int? maxSpinSpeed,
+    double? capacity,
+    bool? hasHeater,
+    String? diagnosticMessage,
   }) {
     return Device(
       id: id ?? this.id,
@@ -89,6 +113,12 @@ class Device {
       temperature: temperature ?? this.temperature,
       vibrationLevel: vibrationLevel ?? this.vibrationLevel,
       scheduledMaintenanceDate: scheduledMaintenanceDate ?? this.scheduledMaintenanceDate,
+      brand: brand ?? this.brand,
+      modelName: modelName ?? this.modelName,
+      maxSpinSpeed: maxSpinSpeed ?? this.maxSpinSpeed,
+      capacity: capacity ?? this.capacity,
+      hasHeater: hasHeater ?? this.hasHeater,
+      diagnosticMessage: diagnosticMessage ?? this.diagnosticMessage,
     );
   }
 }

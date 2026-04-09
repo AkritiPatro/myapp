@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:fl_chart/fl_chart.dart';
-
-import 'device_provider.dart';
 import 'device_model.dart';
 import 'theme_provider.dart';
+import 'device_provider.dart';
+import 'history_chart.dart'; // Use our custom chart instead of fl_chart
+import 'services/maintenance_service.dart';
+
+import 'package:go_router/go_router.dart';
 
 class DeviceDetailScreen extends StatelessWidget {
   final String deviceId;
@@ -18,24 +20,36 @@ class DeviceDetailScreen extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDarkMode;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Device Details",
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        elevation: 1,
-      ),
-      body: Consumer<DeviceProvider>(
-        builder: (context, deviceProvider, child) {
-          final device = deviceProvider.getDeviceById(deviceId);
+    return Consumer<DeviceProvider>(
+      builder: (context, deviceProvider, child) {
+        final device = deviceProvider.getDeviceById(deviceId);
 
-          if (device == null) {
-            return const Center(
+        if (device == null) {
+          return const Scaffold(
+            body: Center(
               child: Text("Device not found. It may have been deleted."),
-            );
-          }
+            ),
+          );
+        }
 
-          return Container(
+        return Scaffold(
+          appBar: AppBar(
+            title: Text("Device Details",
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+            centerTitle: true,
+            elevation: 1,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.auto_awesome, color: Colors.deepPurple),
+                onPressed: () {
+                  context.go('/chatbot?deviceId=${device.brand} ${device.modelName}');
+                },
+                tooltip: 'Ask AI Assistant',
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          body: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -51,14 +65,188 @@ class DeviceDetailScreen extends StatelessWidget {
                 _buildDeviceHeader(context, device, isDark),
                 const SizedBox(height: 20),
                 _buildStatusCard(context, device, deviceProvider, isDark),
+                const SizedBox(height: 10),
+                if (device.diagnosticMessage != null)
+                  _buildDiagnosticMessage(device.diagnosticMessage!, isDark),
+                const SizedBox(height: 20),
+                _buildAnalyticsButton(context, deviceProvider, device.id, isDark),
+                const SizedBox(height: 20),
+                _buildSpecificationsCard(device, isDark),
                 const SizedBox(height: 20),
                 _buildParametersGrid(context, device, isDark),
                 const SizedBox(height: 20),
                 _buildWashHistoryCard(context, device, isDark),
               ],
             ),
-          );
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDiagnosticMessage(String message, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.purple.withValues(alpha: 0.2) : Colors.deepPurple.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? Colors.purple.shade300 : Colors.deepPurple, width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.lightbulb_outline, color: isDark ? Colors.purple.shade200 : Colors.deepPurple),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsButton(BuildContext context, DeviceProvider provider, String deviceId, bool isDark) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        icon: provider.isAnalyzing 
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+          : const Icon(Icons.analytics_outlined),
+        label: Text(provider.isAnalyzing ? "Analyzing Archive Data..." : "Run Smart Analytics"),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          backgroundColor: isDark ? Colors.tealAccent.shade400 : Colors.deepPurple,
+          foregroundColor: isDark ? Colors.black : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        onPressed: provider.isAnalyzing ? null : () async {
+          final result = await provider.runAnalytics(deviceId);
+          if (result != null && context.mounted) {
+            _showDiagnosticResult(context, result, isDark);
+          }
         },
+      ),
+    );
+  }
+
+  void _showDiagnosticResult(BuildContext context, DiagnosticResult result, bool isDark) {
+    final statusColor = result.status == DeviceStatus.normalOperation 
+        ? Colors.green 
+        : (result.status == DeviceStatus.earlyWarning ? Colors.orange : Colors.red);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(
+              result.status == DeviceStatus.normalOperation ? Icons.check_circle : Icons.warning,
+              color: statusColor,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                "Diagnostic Verdict",
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusColor.withAlpha(51),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                result.status.displayName.toUpperCase(),
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  color: statusColor,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              result.message,
+              style: GoogleFonts.poppins(
+                color: isDark ? Colors.white70 : Colors.black87,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "UNDERSTOOD",
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.tealAccent : Colors.deepPurple,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecificationsCard(Device device, bool isDark) {
+    final subTextColor = isDark ? Colors.white70 : Colors.grey.shade600;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: isDark ? Colors.grey.shade800 : Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Machine Specifications", 
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: textColor)),
+            const Divider(),
+            const SizedBox(height: 8),
+            _buildSpecRow("Brand", device.brand, Icons.branding_watermark_outlined, isDark),
+            _buildSpecRow("Model", device.modelName, Icons.model_training, isDark),
+            _buildSpecRow("Max Spin", "${device.maxSpinSpeed} RPM", Icons.speed, isDark),
+            _buildSpecRow("Capacity", "${device.capacity} kg", Icons.fitness_center, isDark),
+            _buildSpecRow("Inbuilt Heater", device.hasHeater ? "Yes" : "No", Icons.heat_pump_outlined, isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpecRow(String label, String value, IconData icon, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: isDark ? Colors.tealAccent : Colors.deepPurple),
+          const SizedBox(width: 10),
+          Text("$label:", style: GoogleFonts.poppins(fontSize: 14, color: isDark ? Colors.white70 : Colors.grey.shade600)),
+          const Spacer(),
+          Text(value, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+        ],
       ),
     );
   }
@@ -76,16 +264,18 @@ class DeviceDetailScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             device.name,
+            textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
-                fontSize: 26,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white : Colors.black87),
           ),
           Text(
-            device.type,
+            "Washing Machine",
             style: GoogleFonts.poppins(
-                fontSize: 16,
-                color: isDark ? Colors.white70 : Colors.grey.shade600),
+                fontSize: 14,
+                letterSpacing: 1.2,
+                color: isDark ? Colors.tealAccent : Colors.deepPurple),
           ),
         ],
       ),
@@ -109,8 +299,12 @@ class DeviceDetailScreen extends StatelessWidget {
         statusMessage = "Early Warning Detected";
         statusIcon = Icons.warning_amber_rounded;
         break;
-      case DeviceStatus.maintenanceRequired:
       case DeviceStatus.failureDetected:
+        statusColor = Colors.red.shade900;
+        statusMessage = "Critical Failure";
+        statusIcon = Icons.dangerous_outlined;
+        break;
+      case DeviceStatus.maintenanceRequired:
         statusColor = Colors.red.shade400;
         statusMessage = "Maintenance Required";
         statusIcon = Icons.error_outline_rounded;
@@ -135,12 +329,15 @@ class DeviceDetailScreen extends StatelessWidget {
               children: [
                 Icon(statusIcon, color: Colors.white, size: 28),
                 const SizedBox(width: 12),
-                Text(
-                  statusMessage,
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                Expanded(
+                  child: Text(
+                    statusMessage,
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ],
@@ -191,6 +388,7 @@ class DeviceDetailScreen extends StatelessWidget {
   }
 
   Widget _buildParametersGrid(BuildContext context, Device device, bool isDark) {
+    final primaryColor = isDark ? Colors.purple : Colors.deepPurple;
     final textColor = isDark ? Colors.white : Colors.black87;
     final subTextColor = isDark ? Colors.white70 : Colors.grey.shade600;
 
@@ -200,7 +398,7 @@ class DeviceDetailScreen extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
-      childAspectRatio: 1.5,
+      childAspectRatio: 1.2,
       children: [
         _buildInfoCard(
             isDark,
@@ -220,7 +418,7 @@ class DeviceDetailScreen extends StatelessWidget {
             isDark,
             Icons.vibration_outlined,
             "Vibration",
-            "${device.vibrationLevel.toStringAsFixed(2)} mm/s",
+            "${device.vibrationLevel.toInt()} / 4095",
             subTextColor,
             textColor),
         _buildInfoCard(
@@ -256,11 +454,14 @@ class DeviceDetailScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
-            Text(
-              value,
-              style: GoogleFonts.poppins(
-                  fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
-              textAlign: TextAlign.center,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: GoogleFonts.poppins(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),
@@ -269,8 +470,6 @@ class DeviceDetailScreen extends StatelessWidget {
   }
 
   Widget _buildWashHistoryCard(BuildContext context, Device device, bool isDark) {
-    final textColor = isDark ? Colors.white70 : Colors.black54;
-
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -281,97 +480,94 @@ class DeviceDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Wash Cycle History",
+              "Diagnostic & Health History",
               style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : Colors.black87),
             ),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  barTouchData: BarTouchData(enabled: true),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 38,
-                        getTitlesWidget: (double value, TitleMeta meta) {
-                          final index = value.toInt();
-                          String text = '';
-                          if (index >= 0 &&
-                              index < device.washCycleHistory.length) {
-                            final cycle = device.washCycleHistory[index];
-                            text = DateFormat.Md().format(cycle.date);
-                          }
-                          return SideTitleWidget(
-                            meta: meta, // FIXED: Required meta parameter
-                            space: 4,
-                            child: Text(text,
-                                style:
-                                    TextStyle(fontSize: 10, color: textColor)),
-                          );
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 35, // Increased slightly for 'm' unit
-                        getTitlesWidget: (double value, TitleMeta meta) {
-                          return SideTitleWidget(
-                            meta: meta, // FIXED: Required meta parameter
-                            space: 4,
-                            child: Text(
-                              '${value.toInt()}m',
-                              style: TextStyle(fontSize: 10, color: textColor),
-                              textAlign: TextAlign.left,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+            if (device.washCycleHistory.isNotEmpty && device.washCycleHistory.every((c) => c.status == DeviceStatus.normalOperation))
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  "Healthy Baseline Established",
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: isDark ? Colors.tealAccent.shade200 : Colors.teal.shade700,
                   ),
-                  gridData: const FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 15,
-                  ),
-                  borderData: FlBorderData(show: false),
-                  barGroups: device.washCycleHistory
-                      .take(7)
-                      .toList()
-                      .asMap()
-                      .entries
-                      .map((entry) {
-                    final index = entry.key;
-                    final cycle = entry.value;
-                    return BarChartGroupData(
-                      x: index,
-                      barRods: [
-                        BarChartRodData(
-                          toY: cycle.durationMinutes.toDouble(),
-                          color: isDark
-                              ? Colors.purple.shade300
-                              : Colors.deepPurple,
-                          width: 12,
-                          borderRadius:
-                              const BorderRadius.all(Radius.circular(4)),
-                        ),
-                      ],
-                    );
-                  }).toList(),
                 ),
               ),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 180, // Reduced slightly to make room for the list
+              child: WashHistoryChart(
+                history: device.washCycleHistory,
+                isDark: isDark,
+              ),
             ),
+            if (device.washCycleHistory.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text(
+                "Recent Diagnostic Runs",
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.purple.shade200 : Colors.deepPurple,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ...device.washCycleHistory.reversed.take(5).map((cycle) {
+                final statusColor = cycle.status == DeviceStatus.normalOperation 
+                    ? Colors.green 
+                    : (cycle.status == DeviceStatus.earlyWarning ? Colors.orange : Colors.red);
+                
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: statusColor),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              DateFormat('MMM d, hh:mm a').format(cycle.date),
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (cycle.diagnosticMessage != null)
+                              Text(
+                                cycle.diagnosticMessage!,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white54 : Colors.black54,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        cycle.status.displayName,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
           ],
         ),
       ),

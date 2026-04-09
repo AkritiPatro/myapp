@@ -20,8 +20,12 @@ class SignUpPageState extends State<SignUpPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false; // Added loading state
 
   void _signUp() async {
+    // 0. Initial state check
+    if (_isLoading) return;
+
     // Input validation: Check if any field is empty
     if (nameController.text.isEmpty ||
         emailController.text.isEmpty ||
@@ -31,6 +35,12 @@ class SignUpPageState extends State<SignUpPage> {
       developer.log('Validation failed: All fields not filled.');
       return; // Exit function if validation fails
     }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    User? createdUser; 
 
     try {
       developer.log('Signup process started for email: ${emailController.text.trim()}');
@@ -42,27 +52,50 @@ class SignUpPageState extends State<SignUpPage> {
         password: passwordController.text.trim(),
       );
 
+      createdUser = userCredential.user;
+
       // --- CRUCIAL CHECK: Ensure user is available after Auth ---
-      if (userCredential.user == null) {
+      if (createdUser == null) {
         throw FirebaseAuthException(
             code: 'user-null-after-auth',
             message: 'Firebase Auth user is null after successful creation.');
       }
-      developer.log('Firebase Auth user created with UID: ${userCredential.user!.uid}');
+      developer.log('Firebase Auth user created with UID: ${createdUser.uid}');
+      
+      // Update profile name in Auth
+      await createdUser.updateDisplayName(nameController.text.trim());
+      developer.log('Auth user display name updated to: ${nameController.text.trim()}');
 
       // 2. Save user data to Firestore
-      developer.log('Attempting to save user data to Firestore for UID: ${userCredential.user!.uid}');
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .set({
-        'name': nameController.text.trim(),
-        'email': emailController.text.trim(),
-        'createdAt': FieldValue.serverTimestamp(), // Added timestamp for debugging/future use
-      }, SetOptions(merge: true)); // Using merge:true is safer for updates, though .set() without merge
-                                   // also works for initial creation.
-
-      developer.log('User data successfully saved to Firestore for UID: ${userCredential.user!.uid}');
+      developer.log('Attempting to save user data to Firestore for UID: ${createdUser.uid}');
+      
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(createdUser.uid)
+            .set({
+          'name': nameController.text.trim(),
+          'email': emailController.text.trim(),
+          'role': 'user', // Default role
+          'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        
+        developer.log('User data successfully saved to Firestore for UID: ${createdUser.uid}');
+      } catch (firestoreError) {
+        // --- ROLLBACK: Delete auth user if Firestore write fails ---
+        developer.log('Firestore write FAILED. Rolling back Auth user...');
+        await createdUser.delete();
+        developer.log('Auth user deleted successfully.');
+        
+        if (firestoreError is FirebaseException && firestoreError.code == 'permission-denied') {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'permission-denied',
+            message: 'Database permission denied. Please ensure Firestore Rules allow writes to /users/{uid}.'
+          );
+        }
+        rethrow;
+      }
 
       Fluttertoast.showToast(
           msg: "Account created successfully ✅",
@@ -81,17 +114,26 @@ class SignUpPageState extends State<SignUpPage> {
       } else if (e.code == 'invalid-email') {
         message = 'The email address is not valid.';
       } else {
-        message = 'Firebase Auth Error: ${e.message} (Code: ${e.code})';
+        message = 'Authentication Error: ${e.message}';
       }
-      developer.log('Firebase Auth Exception during signup: $message');
+      developer.log('Firebase Auth Exception: $message');
       Fluttertoast.showToast(msg: message, backgroundColor: Colors.red);
-    } catch (e, stacktrace) {
-      // Catch any other general exceptions (e.g., Firestore write error, network issues)
-      developer.log('General Error during signup/Firestore save: $e');
-      developer.log('Stacktrace: $stacktrace'); // Print stacktrace for more context
+    } catch (e) {
+      // Catch any other general exceptions (e.g., Firestore write error)
+      String errorMsg = e.toString();
+      if (errorMsg.contains('permission-denied')) {
+        errorMsg = "Database Permissions Error: Check Firestore Rules.";
+      }
+      developer.log('General Signup/Firestore Error: $e');
       Fluttertoast.showToast(
-          msg: "An unexpected error occurred: $e",
+          msg: errorMsg,
           backgroundColor: Colors.red);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -127,6 +169,7 @@ class SignUpPageState extends State<SignUpPage> {
                 TextField(
                   controller: nameController,
                   style: TextStyle(color: inputTextColor),
+                  enabled: !_isLoading,
                   decoration: InputDecoration(
                     hintText: "Full Name",
                     hintStyle: TextStyle(color: inputTextColor.withAlpha(153)),
@@ -145,6 +188,8 @@ class SignUpPageState extends State<SignUpPage> {
                 TextField(
                   controller: emailController,
                   style: TextStyle(color: inputTextColor),
+                  enabled: !_isLoading,
+                  keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     hintText: "Email",
                     hintStyle: TextStyle(color: inputTextColor.withAlpha(153)),
@@ -164,6 +209,7 @@ class SignUpPageState extends State<SignUpPage> {
                   controller: passwordController,
                   obscureText: _obscurePassword,
                   style: TextStyle(color: inputTextColor),
+                  enabled: !_isLoading,
                   onSubmitted: (_) => _signUp(),
                   decoration: InputDecoration(
                     hintText: "Password",
@@ -194,21 +240,31 @@ class SignUpPageState extends State<SignUpPage> {
 
                 // Sign Up Button
                 ElevatedButton(
-                  onPressed: _signUp,
+                  onPressed: _isLoading ? null : _signUp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: buttonColor,
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
+                    disabledBackgroundColor: buttonColor.withAlpha(128),
                   ),
-                  child: Text(
-                    "Sign Up",
-                    style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          "Sign Up",
+                          style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
+                        ),
                 ),
                 const SizedBox(height: 25),
 
@@ -220,7 +276,7 @@ class SignUpPageState extends State<SignUpPage> {
                         style: GoogleFonts.poppins(
                             color: isDark ? Colors.white70 : Colors.black87)),
                     GestureDetector(
-                      onTap: () => context.go('/signin'),
+                      onTap: _isLoading ? null : () => context.go('/signin'),
                       child: Text(
                         "Sign In",
                         style: GoogleFonts.poppins(
